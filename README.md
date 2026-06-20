@@ -1,7 +1,6 @@
 <!-- Drop your images in assets/ — see assets/README.md for the expected files. -->
 <div align="center">
 
-<img src="assets/logo.png" alt="sherlock logo" width="640">
 
 # sherlock
 
