@@ -1,0 +1,6 @@
+[build]
+# Frame-pointer based stack walking (see profiler/src/injection/mod.rs) relies
+# on every frame in the chain — including our own hook and capture
+# functions — actually maintaining rbp as a frame pointer. Rustc doesn't
+# guarantee that by default, so it's forced workspace-wide.
+rustflags = ["-C", "force-frame-pointers=yes"]

@@ -1,0 +1,21 @@
+[package]
+name = "profiler"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Off by default: exports the #[no_mangle] malloc/free/etc. hooks and the
+# ctor that installs them. Must stay opt-in — any binary that links this
+# crate's rlib (including `cargo test` and the analyzer) would otherwise
+# become self-hooking the moment it links the crate, since `#[no_mangle]`
+# symbols are pulled into the final link regardless of use.
+profiler-hooks = []
+
+[dependencies]
+ctor = "1.0.7"
+libc = "0.2.186"
+memmap2 = "0.9.10"
