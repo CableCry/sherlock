@@ -1,4 +1,3 @@
-<!-- Drop your images in assets/ — see assets/README.md for the expected files. -->
 <div align="center">
 
 
@@ -56,7 +55,7 @@ and Linux (x86_64 for the full feature set; aarch64 supported with caveats).
 ### Install
 
 ```sh
-git clone <repo-url> sherlock && cd sherlock
+git clone https://github.com/CableCry/sherlock && cd sherlock
 cargo install --path sherlock
 ```
 
@@ -104,19 +103,38 @@ that never blocks on rendering, while the UI thread reads immutable snapshots at
 Full rationale (dlsym reentrancy, crash guard, memory orderings, ASLR
 resolution, …) is in **[DESIGN.md](DESIGN.md)**.
 
-## Documentation
+## Performance
 
-| Doc | Contents |
-| --- | --- |
-| **[docs/USAGE.md](docs/USAGE.md)** | Dashboard panels, the four views, keybindings, CLI flags, headless drain, export |
-| **[DESIGN.md](DESIGN.md)** | Architecture and internals — the *why* behind the code |
+### Results
+
+2-core Linux VM, target built with `-O2 -fno-builtin -fno-omit-frame-pointer`:
+
+| Allocator calls / sec | Run | Baseline | With sherlock | Overhead | Events captured |
+| --- | --- | --- | --- | --- | --- |
+| **~440K** (realistic heavy workload) | 1 | 4,538.7 ns/iter | 4,455.6 ns/iter | −1.8% (noise) | 97.7% |
+| | 2 | 4,582.4 ns/iter | 4,383.0 ns/iter | −4.4% (noise) | 98.3% |
+| **~4.5M** (allocation-heavy) | 1 | 448.7 ns/iter | 531.9 ns/iter | +18.5% | 53.4% |
+| | 2 | 446.0 ns/iter | 557.6 ns/iter | +25.0% | 53.7% |
+| **~200M** (tight malloc/free loop) | 1 | 10.2 ns/iter | 37.3 ns/iter | ~14 ns per call | 3.7% |
+| | 2 | 9.6 ns/iter | 69.2 ns/iter | ~30 ns per call | 9.5% |
+
+### What it means
+
+- **At realistic allocation rates the overhead is below the noise floor.** At ~440K calls/sec,
+  both runs came out slightly *faster* under sherlock, so the true cost is under ~2%, and ~98%
+  of events reach the analyzer.
+- **Each hooked call costs roughly 15–30 ns.** It's mostly the 32-frame stack walk plus one copy
+  into the 4096-slot ring. Symbol resolution and rendering never happen in the target process.
+- **The drain rate is the limit.** Above a few million calls/sec the ring fills faster than the
+  consumer empties it. The producer never blocks: events are dropped and counted, so the
+  dashboard totals stay honest.
 
 ## Building & testing
 
 ```sh
 cargo build                 # build the workspace
 cargo test                  # unit tests: ring buffer, stack walker, tracker, resolver
-./scripts/smoke_test.sh     # end-to-end: run a crashing fixture, assert the crash is captured
+./bench/run.sh              # overhead benchmark (see Performance below)
 ```
 
 ## Limitations
